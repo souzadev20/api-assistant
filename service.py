@@ -23,7 +23,7 @@ def chat_whit_tools(mensagem):
 
     client = Groq(api_key = os.environ.get('CHAVE_KEY'))   
     response = client.chat.completions.create(
-    model="llama-3.3-70b-versatile",
+    model="llama-3.1-8b-instant",
     messages=[
         {
             "role": "system",
