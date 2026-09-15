@@ -36,4 +36,4 @@ def chat_whit_tools(mensagem):
     ]
     )
 
-    return response.choices.message.content
+    return response.choices[0].message.content
