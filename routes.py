@@ -1,6 +1,6 @@
 import traceback
 from flask import Blueprint, request, jsonify
-from service import chat_whit_tools
+from service import chat_with_tools
 
 router = Blueprint('router', __name__)
 
@@ -15,7 +15,7 @@ def minha_rota():
         if not mensagem:
             return "Erro: Campo 'mensagem' não enviado", 400
             
-        response = chat_whit_tools(mensagem)
+        response = chat_with_tools(mensagem)
         return response, 200, {'Content-Type': 'text/plain; charset=utf-8'}
         
     except Exception as e:
