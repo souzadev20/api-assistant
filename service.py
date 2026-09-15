@@ -5,20 +5,22 @@ from groq import Groq
 
 load_dotenv()
 
+# Nome do modelo oficial ativo atualmente na Groq
+MODELO_ATUAL = "openai/gpt-oss-20b"
+
 def obter_temperatura_atual(cidade):
-    # Simulação de retorno da API de clima
+    # Aqui continua sua lógica ou simulação de clima local
     return f"A temperatura atual em {cidade} é de 25°C com céu limpo."
 
 def chat_with_tools(mensagem):
     try:
-        # Garanta que a chave API está sendo lida corretamente
         chave_api = os.environ.get('CHAVE_KEY')
         if not chave_api:
-            return {"erro": "Chave API 'CHAVE_KEY' não encontrada no ambiente."}, 500
+            return "Erro: Chave API 'CHAVE_KEY' não configurada."
             
         client = Groq(api_key=chave_api)   
         
-        # Histórico de mensagens
+        # Histórico estruturado para manter o fluxo do Function Calling
         mensagens_historico = [{"role": "user", "content": mensagem}]
         
         tools = [
@@ -38,21 +40,19 @@ def chat_with_tools(mensagem):
             }
         ]
 
-        # Primeira chamada ao Groq
+        # 1. Primeira chamada: groq analisa o texto e decide se usa a função
         response = client.chat.completions.create(
-            model="llama3-8b-8192",
+            model=MODELO_ATUAL,  # <--- Usando o modelo ativo
             messages=mensagens_historico,
             tools=tools,
             tool_choice="auto"
         )
         
-        # CORREÇÃO AQUI: Adicionado o índice [0] que faltava
         resposta_mensagem = response.choices[0].message
         tool_calls = resposta_mensagem.tool_calls
 
-        # Se o modelo quis chamar a ferramenta (function calling)
+        # Se o modelo identificou que precisa rodar a função de clima
         if tool_calls:
-            # 1. Adiciona a resposta de intenção do modelo ao histórico
             mensagens_historico.append(resposta_mensagem)
             
             funcoes_disponiveis = {
@@ -64,10 +64,10 @@ def chat_with_tools(mensagem):
                 argumentos_funcao = json.loads(tool_call.function.arguments)
                 funcao_para_chamar = funcoes_disponiveis[nome_funcao]
                 
-                # Executa a função local
+                # Executa a função Python local
                 resultado_da_ferramenta = funcao_para_chamar(cidade=argumentos_funcao.get("cidade"))
                 
-                # 2. Adiciona o resultado da função no histórico para o Groq ler
+                # Adiciona o resultado no formato exigido pela API
                 mensagens_historico.append({
                     "tool_call_id": tool_call.id,
                     "role": "tool",
@@ -75,17 +75,16 @@ def chat_with_tools(mensagem):
                     "content": resultado_da_ferramenta,
                 })
             
-            # Segunda chamada ao Groq, agora com o resultado da temperatura
+            # 2. Segunda chamada: envia o resultado da função para o modelo gerar o texto final
             segunda_resposta = client.chat.completions.create(
-                model="llama3-8b-8192",
+                model=MODELO_ATUAL,  # <--- Usando o modelo ativo
                 messages=mensagens_historico
             )
             return segunda_resposta.choices[0].message.content
 
-        # Se não precisou de ferramenta, retorna o texto direto
+        # Se não precisou usar ferramentas, devolve a resposta direta de texto
         return resposta_mensagem.content
 
     except Exception as e:
-        # Exibe o erro real no terminal do Python para você conseguir rastrear
-        print(f"ERRO NO SERVIDOR: {str(e)}")
-        raise e 
+        print(f"ERRO BACK-END: {str(e)}")
+        return f"Erro processando requisição: {str(e)}"
